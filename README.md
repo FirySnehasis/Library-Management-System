@@ -23,7 +23,12 @@ Installation
 
 First-time Setup
 ---------------
+
 According to the problem statement, I have already created a databse for books and the user in books.txt and accounts.txt respectively.
+The librarian name is Admin and its ID is 1.
+I have also added some students and faculty with their names,id and status in accounts.txt file.
+While adding/removing users make sures you use the right name and id. While creating new id, see from the accounts.txt file which user id is already used.
+For using the predefined accounts.txt, you can see the names of the students, faculty and the librarian along with their id. For eg, Majnu is a student with id 2, Dr. Shubham is a faculty with id 7 and Admin is the librarian with id 1.
 But for generality purposes, I have implemented the below mentioned features
 - On first run, the system will create a default librarian account:
   - Username: Admin
