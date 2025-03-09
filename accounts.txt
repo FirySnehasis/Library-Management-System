@@ -1,9 +1,9 @@
-Majnu,1,Student,0
-Guddu,2,Student,0
-Bablu,3,Student,0
-Golliath,4,Student,0
-Megan,5,Student,0
-Dr. Smith,6,Faculty,
-Dr. Johnson,7,Faculty,
-Dr. Brown,8,Faculty,
-Librarian,9,Librarian,
+Admin,1,Librarian,
+Majnu,2,Student,0
+Guddu,3,Student,0
+Bablu,4,Student,0
+Golliath,5,Student,0
+Sheldon,6,Student,0
+Dr. Shubham,7,Faculty,
+Dr. Niitn,8,Faculty,
+Dr. Rajat,9,Faculty,
