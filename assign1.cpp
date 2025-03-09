@@ -15,21 +15,22 @@ time_t getCurrentDate()
 }
 
 // Base User class
-class User {
+class User 
+{
 protected:
-    string name;
-    int id;
-    string role;
+    string buddyName;       
+    int buddyID;            
+    string jobType;         
 
 public:
-    User(string name, int id, string role) : name(name), id(id), role(role) {}
+    User(string nm, int idd, string type) : buddyName(nm), buddyID(idd), jobType(type) {}
 
-    string getName() const { return name; }
-    int getId() const { return id; }
-    string getRole() const { return role; }
+    string getName() const { return buddyName; }
+    int getId() const { return buddyID; }
+    string getRole() const { return jobType; }
 
     virtual void display() const {
-        cout << "Name: " << name << ", ID: " << id << ", Role: " << role << endl;
+        cout << "Yo! I'm " << buddyName << " (ID: " << buddyID << "), rockin' as a " << jobType << "!" << endl;
     }
 
     virtual ~User() {}
@@ -38,184 +39,148 @@ public:
 // Derived Student class
 class Student : public User 
 {
-    private:
-        int borrowedBooks;
-        vector<pair<string, time_t>> currentBooks; 
-        double fine;
+private:
+    int bookCount;                         
+    vector<pair<string, time_t>> borrowedBooks;    
+    double outstandingFine;                       
+
+public:
+    Student(string nm, int idd) : User(nm, idd, "Student"), bookCount(0), outstandingFine(0) {}
     
-    public:
-        Student(string name, int id) : User(name, id, "Student"), borrowedBooks(0), fine(0) {}
+    const vector<pair<string, time_t>>& getCurrentBooks() const { return borrowedBooks; }
     
-        const vector<pair<string, time_t>>& getCurrentBooks() const { return currentBooks; }
-    
-        void updateFines(time_t currentDate) {
-            double currentFine = 0;
-            for (const auto& book : currentBooks) {
-                time_t borrowDate = book.second;
-                int daysOverdue = currentDate - borrowDate - 15; // 15 days borrowing period
-                if (daysOverdue > 0) {
-                    currentFine += daysOverdue * 10;
-                }
-            }
-            fine = currentFine;
+    void updateFines(time_t now) {
+        double totalFine = 0;
+        for (const auto& book : borrowedBooks) {
+            time_t bday = book.second;
+            int lateDays = now - bday - 15;
+            if (lateDays > 0)
+                totalFine += lateDays * 10;
         }
+        outstandingFine = totalFine;
+    }
     
-        bool borrowBook(const string& bookTitle, time_t borrowDate) {
-            // First updating the fines to check for overdue books
-            updateFines(borrowDate);
-            
-            if (borrowedBooks >= 3) {
-                cout << "Borrowing limit reached. Cannot borrow more books." << endl;
-                return false;
-            }
-            if (fine > 0) {
-                cout << "Outstanding fine of " << fine << " rupees. Please clear the fine to borrow books." << endl;
-                return false;
-            }
-            currentBooks.push_back({bookTitle, borrowDate});
-            borrowedBooks++;
-            return true;
-        }
-    
-        bool returnBook(const string& bookTitle, time_t returnDate) {
-            // First updating  all the fines
-            updateFines(returnDate);
-            
-            auto it = find_if(currentBooks.begin(), currentBooks.end(), [&](const pair<string, time_t>& book) {
-                return book.first == bookTitle;
-            });
-    
-            if (it != currentBooks.end()) 
-            {
-                // Book is being returned
-                currentBooks.erase(it);
-                borrowedBooks--;
-                return true;
-            }
-            cout << "Book not found in your borrowed list." << endl;
+    bool borrowBook(const string& bookTitle, time_t bDay) {
+        updateFines(bDay);
+        if (bookCount >= 3) {
+            cout << "You've reached the borrowing limit. Please return a book first." << endl;
             return false;
         }
-    
-        double getFine() const { return fine; }
-        void setFine(double newFine) { fine = newFine; }
-    
-        void payFine() {
-            if (fine > 0) {
-                cout << "Paid fine of " << fine << " rupees." << endl;
-                fine = 0;
-            } else {
-                cout << "No outstanding fines." << endl;
-            }
+        if (outstandingFine > 0) {
+            cout << "You have an outstanding fine of " << outstandingFine << " rupees. Please pay it before borrowing more books." << endl;
+            return false;
         }
+        borrowedBooks.push_back({bookTitle, bDay});
+        bookCount++;
+        cout << "Book '" << bookTitle << "' borrowed successfully. Total books now: " << bookCount << "." << endl;
+        return true;
+    }
     
-        void display() const override {
-            // Updating the  fines before displaying
-            const_cast<Student*>(this)->updateFines(time(nullptr) / (60 * 60 * 24));
-            
-            User::display();
-            cout << "Borrowed Books: ";
-            for (const auto& book : currentBooks) 
-            {
-                cout << book.first << ", ";
-                
-                // Displaying the overdue status for each book
-                time_t currentDate = time(nullptr) / (60 * 60 * 24);
-                int daysOverdue = currentDate - book.second - 15;
-                if (daysOverdue > 0) 
-                {
-                    cout << "(Overdue by " << daysOverdue << " days) ";
-                }
-            }
-            cout << "\nOutstanding Fine: " << fine << " rupees" << endl;
+    bool returnBook(const string& bookTitle, time_t retDay) {
+        updateFines(retDay);
+        auto it = find_if(borrowedBooks.begin(), borrowedBooks.end(), [&](const pair<string, time_t>& pair) {
+            return pair.first == bookTitle;
+        });
+        if (it != borrowedBooks.end()) {
+            borrowedBooks.erase(it);
+            bookCount--;
+            cout << "Book '" << bookTitle << "' returned. Total books now: " << bookCount << "." << endl;
+            return true;
         }
-    };
+        cout << "The book '" << bookTitle << "' is not in your borrowed list." << endl;
+        return false;
+    }
+    
+    double getFine() const { return outstandingFine; }
+    void setFine(double newFine) { outstandingFine = newFine; }
+    
+    void payFine() {
+        if (outstandingFine > 0) {
+            cout << "You paid " << outstandingFine << " rupees. Thank you." << endl;
+            outstandingFine = 0;
+        } else {
+            cout << "You don't have any outstanding fines." << endl;
+        }
+    }
+    
+    void display() const override {
+        const_cast<Student*>(this)->updateFines(getCurrentDate());
+        User::display();
+        cout << "Borrowed Books: ";
+        for (const auto& bk : borrowedBooks) {
+            cout << bk.first << ", ";
+            int late = (int)(getCurrentDate() - bk.second - 15);
+            if (late > 0)
+                cout << "(Overdue by " << late << " days) ";
+        }
+        cout << "\nOutstanding Fine: " << outstandingFine << " rupees" << endl;
+    }
+};
 
 
 class Faculty : public User 
 {
-    private:
-        int borrowedBooks;
-        vector<pair<string, time_t>> currentBooks;
+private:
+    int bookCount;   
+    vector<pair<string, time_t>> borrowedBooks;   
     
-    public:
-        Faculty(string name, int id) : User(name, id, "Faculty"), borrowedBooks(0) {}
+public:
+    Faculty(string nm, int idd) : User(nm, idd, "Faculty"), bookCount(0) {}
     
-        const vector<pair<string, time_t>>& getCurrentBooks() const { return currentBooks; }
+    const vector<pair<string, time_t>>& getCurrentBooks() const { return borrowedBooks; }
     
-        // Checking if any current books are overdue by more than 60 days
-        bool hasOverdueBooks(time_t currentDate) const {
-            for (const auto& bookPair : currentBooks) {
-                const string& title = bookPair.first;
-                time_t borrowDate = bookPair.second;
-                int daysOverdue = currentDate - borrowDate - 30; // 30 days borrowing period
-                
-                if (daysOverdue > 60) 
-                {
-                    return true; // Found at least one book overdue by more than 60 days
-                }
-            }
-            return false; 
-        }
-    
-        bool borrowBook(const string& bookTitle, time_t borrowDate) 
-        {
-            if (borrowedBooks >= 5) 
-            {
-                cout << "Borrowing limit reached. Cannot borrow more books." << endl;
-                return false;
-            }
-            
-            if (hasOverdueBooks(borrowDate)) 
-            {
-                cout << "Cannot borrow additional books. You have an overdue book for more than 60 days." << endl;
-                return false;
-            }
-            
-            currentBooks.push_back({bookTitle, borrowDate});
-            borrowedBooks++;
-            return true;
-        }
-    
-        bool returnBook(const string& bookTitle, time_t returnDate) 
-        {
-            auto it = find_if(currentBooks.begin(), currentBooks.end(), [&](const pair<string, time_t>& book) {
-                return book.first == bookTitle;
-            });
-    
-            if (it != currentBooks.end()) 
-            {
-                time_t borrowDate = it->second;
-                int daysOverdue = returnDate - borrowDate - 30; // 30 days borrowing period for faculty
-                
-                if (daysOverdue > 60) 
-                {
-                    cout << "This book is overdue by more than 60 days." << endl;
-                }
-                
-                currentBooks.erase(it);
-                borrowedBooks--;
+    bool hasOverdueBooks(time_t now) const {
+        for (const auto& bk : borrowedBooks) {
+            int late = now - bk.second - 30;
+            if (late > 60)
                 return true;
-            }
-            cout << "Book not found in your borrowed list." << endl;
+        }
+        return false;
+    }
+    
+    bool borrowBook(const string& bookTitle, time_t bDay) {
+        if (bookCount >= 5) {
+            cout << "You've reached your borrowing limit. Please return a book first." << endl;
             return false;
         }
-    
-        void display() const override {
-            User::display();
-            cout << "Borrowed Books: ";
-            for (const auto& book : currentBooks) {
-                cout << book.first << ", ";
-            }
-            cout << endl;
-            
-            // Here we are dynamically checking for overdue books when displaying
-            time_t currentDate = time(nullptr) / (60 * 60 * 24); // Current date in days
-            if (hasOverdueBooks(currentDate)) 
-            {
-                cout << "You have an overdue book for more than 60 days. Borrowing is restricted." << endl;
-            }
+        if (hasOverdueBooks(bDay)) {
+            cout << "You have a book overdue by more than 60 days. Return it before borrowing new ones." << endl;
+            return false;
         }
-    };
+        borrowedBooks.push_back({bookTitle, bDay});
+        bookCount++;
+        cout << "Book '" << bookTitle << "' borrowed successfully." << endl;
+        return true;
+    }
+    
+    bool returnBook(const string& bookTitle, time_t retDay) {
+        auto it = find_if(borrowedBooks.begin(), borrowedBooks.end(), [&](const pair<string, time_t>& pair) {
+            return pair.first == bookTitle;
+        });
+        if (it != borrowedBooks.end()) {
+            int late = retDay - it->second - 30;
+            if (late > 60)
+                cout << "Note: This book is very overdue." << endl;
+            borrowedBooks.erase(it);
+            bookCount--;
+            cout << "Book '" << bookTitle << "' returned successfully." << endl;
+            return true;
+        }
+        cout << "Book '" << bookTitle << "' not found in your borrowed list." << endl;
+        return false;
+    }
+    
+    void display() const override {
+        User::display();
+        cout << "Borrowed Books: ";
+        for (const auto& bk : borrowedBooks) {
+            cout << bk.first << ", ";
+        }
+        cout << endl;
+        if (hasOverdueBooks(getCurrentDate()))
+            cout << "Please note: You have a book overdue by more than 60 days." << endl;
+    }
+};
 // Book class
 class Book 
 {
@@ -258,37 +223,29 @@ public:
 class Librarian : public User 
 {
 public:
-    Librarian(string name, int id) : User(name, id, "Librarian") {}
-
-    void addBook(vector<Book>& books, const Book& book) 
-    {
+    Librarian(string nm, int idd) : User(nm, idd, "Librarian") {}
+    
+    void addBook(vector<Book>& books, const Book& book) {
         books.push_back(book);
-        cout << "Book added: " << book.getTitle() << endl;
+        cout << "Boom! Added the book: " << book.getTitle() << " to the gig." << endl;
     }
-
-    void removeBook(vector<Book>& books, const string& bookTitle) 
-    {
-        auto it = find_if(books.begin(), books.end(), [&](const Book& book) {
-            return book.getTitle() == bookTitle;
+    
+    void removeBook(vector<Book>& books, const string& booTitle) {
+        auto it = find_if(books.begin(), books.end(), [&](const Book& bk) {
+            return bk.getTitle() == booTitle;
         });
-
-        if (it != books.end()) 
-        {
+        if (it != books.end()) {
             books.erase(it);
-            cout << "Book removed: " << bookTitle << endl;
-        } 
-        else 
-        {
-            cout << "Book not found." << endl;
+            cout << "Removed '" << booTitle << "'—gone like last night's pizza!" << endl;
+        } else {
+            cout << "Bummer, '" << booTitle << "' was not found." << endl;
         }
     }
-
+    
     void displayBooks(const vector<Book>& books) const {
-        cout << "Available Books:" << endl;
-        for (const auto& book : books) 
-        {
-            book.display();
-        }
+        cout << "Here's the cool collection:" << endl;
+        for (const auto& bk : books)
+            bk.display();
         cout << endl;
     }
 };
@@ -296,244 +253,176 @@ public:
 
 class Account 
 {
-    private:
-        shared_ptr<User> user;
-        vector<string> borrowedBooks;
-        double fine;
+private:
+    shared_ptr<User> user;
+    vector<string> borrowedBooksList;  
+    double fineAmount;          
     
-    public:
-        Account(shared_ptr<User> user) : user(user), fine(0) 
-        {
-            // Initializing borrowedBooks based on user's currentBooks
+public:
+    Account(shared_ptr<User> usr) : user(usr), fineAmount(0) 
+    {
+        syncBorrowedBooks();
+    }
+    
+    void syncBorrowedBooks() {
+        borrowedBooksList.clear();
+        if (user->getRole() == "Student") {
+            Student* stu = dynamic_cast<Student*>(user.get());
+            if (stu) {
+                for (const auto& pair : stu->getCurrentBooks())
+                    borrowedBooksList.push_back(pair.first);
+            }
+        } else if (user->getRole() == "Faculty") {
+            Faculty* fac = dynamic_cast<Faculty*>(user.get());
+            if (fac) {
+                for (const auto& pair : fac->getCurrentBooks())
+                    borrowedBooksList.push_back(pair.first);
+            }
+        }
+    }
+    
+    shared_ptr<User> getUser() const { return user; }
+    
+    void borrowBook(const string& bookTitle, time_t bDay, vector<Book>& books) {
+        auto it = find_if(books.begin(), books.end(), [&](const Book& bk) {
+            return bk.getTitle() == bookTitle && bk.getStatus() == "Available";
+        });
+        if (it == books.end()) {
+            cout << "The book '" << bookTitle << "' is not available." << endl;
+            return;
+        }
+        bool success = false;
+        if (user->getRole() == "Student") {
+            Student* stu = dynamic_cast<Student*>(user.get());
+            if (stu)
+                success = stu->borrowBook(bookTitle, bDay);
+        } else if (user->getRole() == "Faculty") {
+            Faculty* fac = dynamic_cast<Faculty*>(user.get());
+            if (fac)
+                success = fac->borrowBook(bookTitle, bDay);
+        } else {
+            cout << "Librarians do not borrow books." << endl;
+            return;
+        }
+        if (success) {
+            borrowedBooksList.push_back(bookTitle);
+            it->setStatus("Borrowed");
+            it->setReservedBy(user->getName());
+            cout << "Book '" << bookTitle << "' has been borrowed." << endl;
+        }
+    }
+    
+    void returnBook(const string& bookTitle, time_t rDay, vector<Book>& books) {
+        bool success = false;
+        if (user->getRole() == "Student") {
+            Student* stu = dynamic_cast<Student*>(user.get());
+            if (stu)
+                success = stu->returnBook(bookTitle, rDay);
+        } else if (user->getRole() == "Faculty") {
+            Faculty* fac = dynamic_cast<Faculty*>(user.get());
+            if (fac)
+                success = fac->returnBook(bookTitle, rDay);
+        } else {
+            cout << "Librarians do not return books." << endl;
+            return;
+        }
+        if (success) {
+            auto it = find(borrowedBooksList.begin(), borrowedBooksList.end(), bookTitle);
+            if (it != borrowedBooksList.end())
+                borrowedBooksList.erase(it);
+            auto bookIt = find_if(books.begin(), books.end(), [&](const Book& bk) {
+                return bk.getTitle() == bookTitle;
+            });
+            if (bookIt != books.end()) {
+                bookIt->setStatus("Available");
+                bookIt->setReservedBy("");
+                cout << "Book '" << bookTitle << "' returned successfully." << endl;
+            } else {
+                cout << "Warning: The book '" << bookTitle << "' was not found in the library collection." << endl;
+            }
             syncBorrowedBooks();
         }
+    }
     
-        void syncBorrowedBooks() 
-        {
-            borrowedBooks.clear();
-    
-            if (user->getRole() == "Student") 
-            {
-                Student* student = dynamic_cast<Student*>(user.get());
-                if (student) 
-                {
-                    for (const auto& bookPair : student->getCurrentBooks()) 
-                    {
-                        borrowedBooks.push_back(bookPair.first);
-                    }
-                }
-            } 
-            else if (user->getRole() == "Faculty") 
-            {
-                Faculty* faculty = dynamic_cast<Faculty*>(user.get());
-                if (faculty) 
-                {
-                    for (const auto& bookPair : faculty->getCurrentBooks()) 
-                    {
-                        borrowedBooks.push_back(bookPair.first);
-                    }
-                }
+    void payFine() {
+        if (user->getRole() == "Student") {
+            Student* stu = dynamic_cast<Student*>(user.get());
+            if (stu) {
+                stu->payFine();
+                fineAmount = stu->getFine();
             }
+        } else {
+            cout << "No fines applicable for your role." << endl;
         }
+    }
     
-        shared_ptr<User> getUser() const { return user; }
-    
-        void borrowBook(const string& bookTitle, time_t borrowDate, vector<Book>& books) {
-            // First checking if the book exists and is available for borrowing
-            auto bookIt = find_if(books.begin(), books.end(), [&](const Book& book) {
-                return book.getTitle() == bookTitle && book.getStatus() == "Available";
-            });
-    
-            if (bookIt == books.end()) 
-            {
-                cout << "Book not found or not available." << endl;
-                return;
-            }
-    
-            bool success = false;
-            if (user->getRole() == "Student") 
-            {
-                Student* student = dynamic_cast<Student*>(user.get());
-                if (student) 
-                {
-                    success = student->borrowBook(bookTitle, borrowDate);
-                }
-            } 
-            else if (user->getRole() == "Faculty") 
-            {
-                Faculty* faculty = dynamic_cast<Faculty*>(user.get());
-                if (faculty) 
-                {
-                    success = faculty->borrowBook(bookTitle, borrowDate);
-                }
-            } 
-            else 
-            {
-                cout << "Librarians cannot borrow books." << endl;
-                return;
-            }
-    
-            if (success) 
-            {
-                borrowedBooks.push_back(bookTitle);
-                bookIt->setStatus("Borrowed");
-                bookIt->setReservedBy(user->getName());
-                cout << "Book borrowed successfully: " << bookTitle << endl;
-            }
-        }
-    
-        void returnBook(const string& bookTitle, time_t returnDate, vector<Book>& books) 
-        {
-            bool success = false;
-            if (user->getRole() == "Student") 
-            {
-                Student* student = dynamic_cast<Student*>(user.get());
-                if (student) 
-                {
-                    success = student->returnBook(bookTitle, returnDate);
-                }
-            } 
-            else if (user->getRole() == "Faculty") 
-            {
-                Faculty* faculty = dynamic_cast<Faculty*>(user.get());
-                if (faculty) 
-                {
-                    success = faculty->returnBook(bookTitle, returnDate);
-                }
-            } 
-            else 
-            {
-                cout << "Librarians cannot return books." << endl;
-                return;
-            }
-    
-            if (success) 
-            {
-                // Updating the borrowedBooks list
-                auto it = find(borrowedBooks.begin(), borrowedBooks.end(), bookTitle);
-                if (it != borrowedBooks.end()) 
-                {
-                    borrowedBooks.erase(it);
-                }
-                
-                auto bookIt = find_if(books.begin(), books.end(), [&](const Book& book) {
-                    return book.getTitle() == bookTitle;
-                });
-                
-                if (bookIt != books.end()) 
-                {
-                    bookIt->setStatus("Available");
-                    bookIt->setReservedBy("");
-                    cout << "Book returned successfully: " << bookTitle << endl;
-                } 
-                else 
-                {
-                    cout << "Warning: Book not found in library collection." << endl;
-                }
-                syncBorrowedBooks();
-            }
-        }
-    
-        void payFine() 
-        {
-            if (user->getRole() == "Student") 
-            {
-                Student* student = dynamic_cast<Student*>(user.get());
-                if (student) 
-                {
-                    student->payFine();
-                    // Here we are updating the account's fine value
-                    fine = student->getFine();
-                }
-            } 
-            else 
-            {
-                cout << "No fines for faculty or librarians." << endl;
-            }
-        }
-    
-        void display() const {
-            user->display();
-            cout << "Borrowed Books: ";
-            for (const auto& book : borrowedBooks) {
-                cout << book << ", ";
-            }
-            cout << "\nOutstanding Fine: " << fine << " rupees" << endl;
-        }
-    };
+    void display() const {
+        user->display();
+        cout << "Borrowed Books: ";
+        for (const auto& b : borrowedBooksList)
+            cout << b << ", ";
+        cout << "\nOutstanding Fine: " << fineAmount << " rupees" << endl;
+    }
+};
 // Library class
 class Library 
 {
 private:
     vector<Book> books;
     vector<Account> accounts;
-
+    
 public:
     vector<Book>& getBooks() { return books; }
     const vector<Book>& getBooks() const { return books; }
-
-    void addBook(const Book& book, const Librarian& librarian) 
-    {
-        books.push_back(book);
-        cout << "Librarian " << librarian.getName() << " added the book: " << book.getTitle() << endl;
+    
+    void addBook(const Book& bk, const Librarian& lib) {
+        books.push_back(bk);
+        cout << "Librarian " << lib.getName() << " just tossed in '" << bk.getTitle() << "'." << endl;
     }
-
-    void removeBook(const string& bookTitle, const Librarian& librarian) 
-    {
-        auto it = find_if(books.begin(), books.end(), [&](const Book& book) {
-            return book.getTitle() == bookTitle;
+    
+    void removeBook(const string& booTitle, const Librarian& lib) {
+        auto it = find_if(books.begin(), books.end(), [&](const Book& bk) {
+            return bk.getTitle() == booTitle;
         });
-
-        if (it != books.end()) 
-        {
+        if (it != books.end()) {
             books.erase(it);
-            cout << "Librarian " << librarian.getName() << " removed the book: " << bookTitle << endl;
-        } 
-        else 
-        {
-            cout << "Book not found." << endl;
+            cout << "Librarian " << lib.getName() << " booted out '" << booTitle << "'." << endl;
+        } else {
+            cout << "Oops, '" << booTitle << "' couldn't be found." << endl;
         }
     }
-
-    void addAccount(Account account, const Librarian& librarian) 
-    {
-        cout << "Librarian " << librarian.getName() << " added the account for: " << account.getUser()->getName() << endl;
-        accounts.push_back(std::move(account));
+    
+    void addAccount(Account acc, const Librarian& lib) {
+        cout << "Librarian " << lib.getName() << " added account for " << acc.getUser()->getName() << "." << endl;
+        accounts.push_back(std::move(acc));
     }
-
-    void removeAccount(const string& userName, const Librarian& librarian) 
-    {
-        auto it = find_if(accounts.begin(), accounts.end(), [&](const Account& account) {
-            return account.getUser()->getName() == userName;
+    
+    void removeAccount(const string& usrName, const Librarian& lib) {
+        auto it = find_if(accounts.begin(), accounts.end(), [&](const Account& acc) {
+            return acc.getUser()->getName() == usrName;
         });
-
-        if (it != accounts.end()) 
-        {
+        if (it != accounts.end()) {
             accounts.erase(it);
-            cout << "Librarian " << librarian.getName() << " removed the account for: " << userName << endl;
-        } 
-        else 
-        {
-            cout << "Account not found." << endl;
+            cout << "Librarian " << lib.getName() << " axed account for " << usrName << "." << endl;
+        } else {
+            cout << "Account for " << usrName << " not found." << endl;
         }
     }
-
+    
     void displayBooks() const {
         cout << "Library Books:" << endl;
-        for (const auto& book : books) {
-            book.display();
-        }
+        for (const auto& bk : books)
+            bk.display();
     }
-
+    
     void displayAccounts() const {
         cout << "Library Accounts:" << endl;
-        for (const auto& account : accounts) {
-            account.display();
-        }
+        for (const auto& acc : accounts)
+            acc.display();
     }
-
+    
     vector<Account>& getAccounts() { return accounts; }
-
+    
     // Loading the library state from files
     void loadState() 
     {
@@ -717,7 +606,7 @@ int main()
     while (true) 
     {
         cout << "\n------------------------------------------" << endl;
-        cout << "Welcome to the Library Management System!" << endl;
+        cout << "Welcome to the the IITK Library Management System!" << endl;
         cout << "------------------------------------------" << endl;
         cout << "Please select your role:" << endl;
         cout << "1. Student" << endl;
